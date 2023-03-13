@@ -19,7 +19,8 @@ cd <repository-name>
 ```
 
 2. Install the required Python packages:
-```pip install -r requirements.txt
+```
+pip install -r requirements.txt
 ```
 
 3. Download the HetioNet data files and place them in the `data/` directory.
@@ -28,7 +29,8 @@ cd <repository-name>
 ## Usage
 ### Data Import
 Before running any queries, you need to import the data into the database. To import the data, run the following command:
-```python3 utils/data_import.py
+```
+python3 utils/data_import.py
 ```
 This script will create the necessary database models and import the data from the HetioNet data files.
 
