@@ -4,8 +4,20 @@ from dotenv import load_dotenv
 from neo4j import GraphDatabase
 
 # Add the path to the "utils" module to the Python path
-utils_path = os.path.abspath(os.path.join(os.path.dirname(__file__), 'utils'))
-sys.path.append(utils_path)
+# utils_path = os.path.abspath(os.path.join(os.path.dirname(__file__), 'utils'))
+# sys.path.append(utils_path)
+
+# utils_path = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'utils'))
+# sys.path.append(utils_path)
+
+#utils_path = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'hetionet', 'utils'))
+
+#utils_path = '/Users/chizy/Desktop/hetionet/utils'
+
+utils_path = '/Users/chizy/Desktop/hetionet/utils'
+if utils_path not in sys.path:
+    sys.path.append(utils_path)
+
 
 from utils.data_import import load_nodes, load_edges
 

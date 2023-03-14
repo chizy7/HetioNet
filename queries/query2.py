@@ -1,9 +1,9 @@
+import os
 from pymongo import MongoClient
 
-
 def query2(disease_id):
-    client = MongoClient('mongodb://localhost:27017/')
-    db = client['hetionet']
+    client = MongoClient(os.environ['MONGO_URI'])
+    db = client[os.environ['DB_NAME']]
 
     disease = db.nodes.find_one({'_id': disease_id, 'kind': 'Disease'})
     if not disease:
