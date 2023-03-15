@@ -4,22 +4,16 @@ from dotenv import load_dotenv
 from neo4j import GraphDatabase
 
 # Add the path to the "utils" module to the Python path
-# utils_path = os.path.abspath(os.path.join(os.path.dirname(__file__), 'utils'))
-# sys.path.append(utils_path)
+if "__file__" in  globals():
+    utils_path = os.path.abspath(os.path.join(os.path.dirname(__file__), 'utils'))
+else:
+    # if copying/pasting into repl, make a best effort
+    utils_path = os.path.abspath(os.path.join(os.path.dirname('.'), 'utils'))
 
-# utils_path = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'utils'))
-# sys.path.append(utils_path)
-
-#utils_path = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'hetionet', 'utils'))
-
-#utils_path = '/Users/chizy/Desktop/hetionet/utils'
-
-utils_path = '/Users/chizy/Desktop/hetionet/utils'
-if utils_path not in sys.path:
-    sys.path.append(utils_path)
+sys.path.append(utils_path)
 
 
-from utils.data_import import load_nodes, load_edges
+from utils.data_import import load_nodes_by_type, load_edges
 
 load_dotenv()  # Load environment variables from .env file
 
@@ -31,8 +25,8 @@ class Neo4jModel:
     def import_data(self):
         with self.driver.session() as session:
             # Load nodes and edges from TSV files
-            nodes = load_nodes(os.path.join("data", "nodes.tsv"), "\t")
-            edges = load_edges(os.path.join("data", "edges.tsv"), "\t")
+            nodes = load_nodes_by_type(os.path.join("data", "nodes.tsv"))
+            edges = load_edges(os.path.join("data", "edges.tsv"))
 
             # Create indexes on label properties for faster querying
             session.run("CREATE INDEX ON :Gene(id)")
@@ -43,7 +37,7 @@ class Neo4jModel:
             for node_type in nodes:
                 for node in nodes[node_type]:
                     # Create a node with a label equal to the node_type and properties id and name
-                    session.run(f"CREATE (: {node_type} {{id: '{node[0]}', name: '{node[1]}'}})")
+                    session.run(f"CREATE (: {node_type} {{id: '{node[0].split('::')[0]}', name: '{node[1]}'}})")
 
             # Create edges
             for edge_type in edges:
