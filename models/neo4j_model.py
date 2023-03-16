@@ -26,7 +26,7 @@ class Neo4jModel:
         with self.driver.session() as session:
             # Load nodes and edges from TSV files
             nodes = load_nodes_by_type(os.path.join("data", "nodes.tsv"))
-            nodes = []
+            #nodes = []
             edges = load_edges(os.path.join("data", "edges.tsv"))
 
             print(f"# node types: {len(nodes)}, # edge types: {len(edges)}")
@@ -39,7 +39,10 @@ class Neo4jModel:
             for node_type in nodes:
                 for node in nodes[node_type]:
                     # Create a node with a label equal to the node_type and properties id and name
-                    session.run(f'CREATE (: {node_type} {{id: "{node[0].split("::")[0]}", name: "{node[1]}"}})')
+                    print(node)
+                    s= f'CREATE (: {node_type} {{id: "{node[0].split("::")[1]}", name: "{node[1]}"}})'
+                    session.run(s)
+                    print(s)
                     ctr = ctr + 1
                     if ctr % 100 == 0:
                         print(f"Added 100 nodes of {node_type}")
@@ -50,7 +53,9 @@ class Neo4jModel:
             for edge_type in edges:
                 for edge in edges[edge_type]:
                     # Create an edge of type edge[1] between the nodes with ids edge[0] and edge[2]
-                    session.run(f"MATCH (source: {edge[0].split('::')[0]} {{id: '{edge[0]}'}}), (target: {edge[2].split('::')[0]} {{id: '{edge[2]}'}}) CREATE (source)-[:{edge[1]}]->(target)")
+                    s = f"MATCH (source: {edge[0].split('::')[0]} {{id: '{edge[0].split('::')[1]}'}}), (target: {edge[2].split('::')[0]} {{id: '{edge[2].split('::')[1]}'}}) CREATE (source)-[:{edge[1]}]->(target)"
+                    r = session.run(s)
+                    print(f"Result from : {s}\n\t{r.data()}")
                     ctr = ctr + 1
                     if ctr % 100 == 0:
                         print(f"Added 100 edges of {edge_type}")
