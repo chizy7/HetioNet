@@ -1,3 +1,4 @@
+import os
 import csv
 
 def import_data_to_csv(filename):
@@ -55,7 +56,7 @@ def load_edges(filename, delimiter='\t', skip_header=True):
             source = row[0]
             metaedge = row[1]
             target = row[2]
-            relationdship = relationships[metaedge]['relationship']
+            relationship = relationships[metaedge]['relationship']
             if metaedge not in data.keys():
                 data[metaedge] = []
             data[metaedge].append([source, relationship, target])
