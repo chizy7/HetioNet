@@ -1,7 +1,7 @@
 import os
 import sys
 from dotenv import load_dotenv
-from neo4j import GraphDatabase
+from py2neo import Graph
 
 # Add the path to the "utils" module to the Python path
 if "__file__" in  globals():
@@ -13,59 +13,90 @@ else:
 sys.path.append(utils_path)
 
 
-from utils.data_import import load_nodes_by_type, load_edges
+from utils.data_import import load_nodes_by_type, load_edges, get_node_types, get_edge_types
 
 load_dotenv()  # Load environment variables from .env file
 
 class Neo4jModel:
     def __init__(self):
         # Initialize the Neo4j driver with the URI and credentials from environment variables
-        self.driver = GraphDatabase.driver(os.getenv("NEO4J_URI"), auth=(os.getenv("NEO4J_USER"), os.getenv("NEO4J_PASSWORD")))
+        sess_string = f"""
+        Graph(
+            { os.getenv("NEO4J_URI") },
+                auth=(
+                    {os.getenv("NEO4J_USER")},
+                    {os.getenv("NEO4J_PASSWORD")}
+                )
+        )
+        """
+        print(sess_string)
+        self.session = Graph(os.getenv("NEO4J_URI"), auth=(os.getenv("NEO4J_USER"), os.getenv("NEO4J_PASSWORD")))
 
     def import_data(self):
-        with self.driver.session() as session:
-            # Load nodes and edges from TSV files
-            nodes = load_nodes_by_type(os.path.join("data", "nodes.tsv"))
-            #nodes = []
-            edges = load_edges(os.path.join("data", "edges.tsv"))
+        # Load nodes and edges from TSV files
+        #nodes = load_nodes_by_type(os.path.join("data", "nodes.tsv"))
 
-            print(f"# node types: {len(nodes)}, # edge types: {len(edges)}")
+        #nodes = []
+        #edges = load_edges(os.path.join("data", "edges.tsv"))
 
-            # clear everything
-            #r = session.run("match (n) detach delete n")
-            #print(f"Result from clearning nodes: {r.data()}")
-            # Create nodes
-            ctr = 0
-            for node_type in nodes:
-                for node in nodes[node_type]:
-                    # Create a node with a label equal to the node_type and properties id and name
-                    print(node)
-                    s= f'CREATE (: {node_type} {{id: "{node[0].split("::")[1]}", name: "{node[1]}"}})'
-                    session.run(s)
-                    print(s)
-                    ctr = ctr + 1
-                    if ctr % 100 == 0:
-                        print(f"Added 100 nodes of {node_type}")
-            print(f"Added {ctr} nodes")
+        #print(f"# node types: {len(nodes)}, # edge types: {len(edges)}")
 
-            # Create edges
-            ctr = 0
-            for edge_type in edges:
-                for edge in edges[edge_type]:
-                    # Create an edge of type edge[1] between the nodes with ids edge[0] and edge[2]
-                    s = f"MATCH (source: {edge[0].split('::')[0]} {{id: '{edge[0].split('::')[1]}'}}), (target: {edge[2].split('::')[0]} {{id: '{edge[2].split('::')[1]}'}}) CREATE (source)-[:{edge[1]}]->(target)"
-                    r = session.run(s)
-                    print(f"Result from : {s}\n\t{r.data()}")
-                    ctr = ctr + 1
-                    if ctr % 100 == 0:
-                        print(f"Added 100 edges of {edge_type}")
-            print(f"Added {ctr} edges")
+        # clear everything
+        r = self.session.run("match (n) detach delete n")
+        print(f"Result from clearning nodes: {r.summary()}")
+
+        # Create nodes
+        node_types = get_node_types()
+        for node_type in node_types:
             # Create indexes on label properties for faster querying
-            # Getting error when in original location
-            # Maybe we need to create nodes first?- gmatz TODO
-#            session.run("CREATE INDEX ON :Gene(id)")
-#            session.run("CREATE INDEX ON :Compound(id)")
-#            session.run("CREATE INDEX ON :Disease(id)")
+            index_str = f"""CREATE INDEX {node_type}_idx IF NOT EXISTS
+                FOR (n:{node_type}) ON (n.id)
+                """
+            res = self.session.run(index_str)
+            print(f"Added Index to %s: %s" % (node_type, res.summary()))
+            data_file = os.path.abspath(os.path.join("data", "nodes", f"{node_type.lower()}.tsv"))
+            print(f"Importing {node_type} nodes")
+            s = """
+            LOAD CSV FROM 'file:///%s'
+            AS line FIELDTERMINATOR '\t'
+            CREATE
+            (:%s { id: line[0], name: line[1] })
+            """ % (data_file, node_type)
+            print(s)
+            res = self.session.run(s)
+            print(f"Added nodes: %s" % res.summary())
+            #self.session.commit()
+
+
+        # Create edges
+        edge_types = get_edge_types()
+        print(edge_types)
+        for edge_type in edge_types:
+            edge_source = edge_types[edge_type]['source']
+            edge_target = edge_types[edge_type]['target']
+            edge_relationship = edge_types[edge_type]['relationship']
+            edge_name = edge_types[edge_type]['name']
+
+            data_file = os.path.abspath(os.path.join("data", "edges", f"{edge_name}.tsv"))
+            print(f"Importing {edge_type} edges frfom {data_file}")
+            # py2neo.errors.ClientError: [Statement.SyntaxError]
+            # The PERIODIC COMMIT query hint is no longer supported.
+            # Please use CALL { ... } IN TRANSACTIONS instead.
+            #USING PERIODIC COMMIT 1000
+            s = """
+            LOAD CSV FROM 'file:///%s'
+            AS line
+            FIELDTERMINATOR '\t'
+            MATCH
+                (source:%s {id: line[0]}), 
+                (target:%s {id: line[1]})
+            CREATE
+            (source)-[:%s]->(target)
+            """ % (data_file, edge_source, edge_target, edge_relationship.upper())
+            print(s)
+            res = self.session.run(s)
+            print(f"Added edges: %s" % res.summary())
+            #self.session.commit()
 
     def query1(self, disease_id):
         with self.driver.session() as session:

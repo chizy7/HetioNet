@@ -61,3 +61,12 @@ def load_edges(filename, delimiter='\t', skip_header=True):
                 data[metaedge] = []
             data[metaedge].append([source, relationship, target])
     return data
+
+def get_node_types():
+    relationships = load_metaedges(os.path.join("data", "metaedges.tsv"))
+    return list({ relationships[x]['source'] for x in relationships })
+
+def get_edge_types():
+    relationships = load_metaedges(os.path.join("data", "metaedges.tsv"))
+    #return list({ relationships[x]['source'] for x in relationships })
+    return relationships
