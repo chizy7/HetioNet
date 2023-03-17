@@ -24,21 +24,22 @@ pip install -r requirements.txt
 ```
 
 3. Download the HetioNet data files and place them in the `data/` directory.
-
+Default datafiles will already be there
 
 ## Usage
 ### Data Import
-Before running any queries, you need to import the data into the database. To import the data, run the following command:
+In order to import data, run the following command:
 ```
-python3 utils/data_import.py
+python3 main.py -i
 ```
 This script will create the necessary database models and import the data from the HetioNet data files.
 
 ## Running Queries
-To run a query, navigate to the `queries/` directory and run the corresponding Python script. For example, to run query 1, run the following command:
-```cd queries/
-python query1.py
+To run a query - without importing data - run the following command:
 ```
+python main.py
+```
+and follow the prompts.
 
 You will be prompted to enter a disease ID. The script will then output the name of the disease, the drug names that can treat or palliate the disease, the gene names that cause the disease, and the locations where the disease occurs.
 
