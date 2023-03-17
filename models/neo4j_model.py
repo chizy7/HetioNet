@@ -41,12 +41,18 @@ class Neo4jModel:
 
         #print(f"# node types: {len(nodes)}, # edge types: {len(edges)}")
 
+        node_types = get_node_types()
+
         # clear everything
-        r = self.session.run("match (n) detach delete n")
-        print(f"Result from clearning nodes: {r.summary()}")
+        for node_type in node_types:
+            print(f"Deleting {node_type} nodes")
+            index_str = f"""DROP INDEX {node_type}_idx IF EXISTS"""
+            res = self.session.run(index_str)
+            delete_str = f"match (n:{node_type}) detach delete n"
+            r = self.session.run(delete_str)
+            print(f"Result from clearing {node_type} nodes: {r.summary()}")
 
         # Create nodes
-        node_types = get_node_types()
         for node_type in node_types:
             # Create indexes on label properties for faster querying
             index_str = f"""CREATE INDEX {node_type}_idx IF NOT EXISTS
@@ -78,7 +84,7 @@ class Neo4jModel:
             edge_name = edge_types[edge_type]['name']
 
             data_file = os.path.abspath(os.path.join("data", "edges", f"{edge_name}.tsv"))
-            print(f"Importing {edge_type} edges frfom {data_file}")
+            print(f"Importing {edge_type} edges from {data_file}")
             # py2neo.errors.ClientError: [Statement.SyntaxError]
             # The PERIODIC COMMIT query hint is no longer supported.
             # Please use CALL { ... } IN TRANSACTIONS instead.
