@@ -29,7 +29,7 @@ class Neo4jModel:
                 )
         )
         """
-        print(sess_string)
+        #print(sess_string)
         self.session = Graph(os.getenv("NEO4J_URI"), auth=(os.getenv("NEO4J_USER"), os.getenv("NEO4J_PASSWORD")))
 
     def import_data(self):
@@ -105,15 +105,44 @@ class Neo4jModel:
             #self.session.commit()
 
     def query1(self, disease_id):
-        with self.driver.session() as session:
-            # Find all genes and compounds associated with a given disease, and return their names and the location of the compounds
-            result = session.run(f"MATCH (disease: Disease {{id: '{disease_id}'}})-[:DaG]-(gene: Gene), (gene)-[:GiG]-(compound: Compound) RETURN disease.name, collect(DISTINCT compound.name), collect(DISTINCT gene.name), collect(DISTINCT compound.location)")
-
-            return result.single()
+        # Given a disease id, what is its name,
+        # hat are drug names that can treat or
+        # palliate this disease, what are gene
+        # names that cause this disease, and
+        # where this disease occurs? Obtain and
+        # output this information in a single query.
+        q = f"""
+        match (d:Disease) where d.id = '{disease_id}'
+        merge (c1:Compound)-[t:TREATS]-(d)
+        merge (c2:Compound)-[p:PALLIATES]-(d)
+        merge (g:Gene)-[assoc:ASSOCIATES]-(d)
+        merge (a:Anatomy)-[l:LOCALIZES]-(d)
+        return d,c1,c2,g,a
+        """
+        #print(q)
+        result = self.session.run(q)
+        res_nodes =  list(result.next())
+        #print(f"Number of nodes returned: {len(res_nodes)}")
+        #print(f"Nodes: {res_nodes}")
+        disease_node = [n for n in res_nodes if str(n.labels) == ':Disease' ][0]
+        compound_nodes = [n for n in res_nodes if str(n.labels) == ':Compound' ]
+        gene_nodes = [n for n in res_nodes if str(n.labels) == ':Gene' ]
+        anatomy_nodes = [n for n in res_nodes if str(n.labels) == ':Anatomy' ]
+        disease_name = disease_node['name']
+        print(f"Your disease is {disease_name}")
+        print(f"Drugs which treat or palliate this disease:")
+        for n in compound_nodes:
+            print(f"\t{n['name']}")
+        print(f"Genes which cause this disease:")
+        for n in gene_nodes:
+            print(f"\t{n['name']}")
+        print(f"Body parts where this disease can be found:")
+        for n in anatomy_nodes:
+            print(f"\t{n['name']}")
+        print()
 
     def query2(self):
-        with self.driver.session() as session:
-            # Find all compounds that are either upregulated or downregulated in at least one disease, and return their names
-            result = session.run("MATCH (disease: Disease)-[:DaG]-(gene: Gene), (compound: Compound)-[up: CuG]-(gene), (compound)-[down: CdG]-(location: AnatomicalEntity)<-[:PaD]-(disease) WHERE (up.upregulation AND NOT down.downregulation) OR (down.downregulation AND NOT up.upregulation) RETURN DISTINCT compound.name")
+        # Find all compounds that are either upregulated or downregulated in at least one disease, and return their names
+        result = session.run("MATCH (disease: Disease)-[:DaG]-(gene: Gene), (compound: Compound)-[up: CuG]-(gene), (compound)-[down: CdG]-(location: AnatomicalEntity)<-[:PaD]-(disease) WHERE (up.upregulation AND NOT down.downregulation) OR (down.downregulation AND NOT up.upregulation) RETURN DISTINCT compound.name")
 
-            return [record["compound.name"] for record in result]
+        return [record["compound.name"] for record in result]
